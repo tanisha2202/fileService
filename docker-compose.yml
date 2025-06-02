@@ -1,0 +1,36 @@
+# docker-compose.yml
+version: "3.8"
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - cassandra
+    networks:
+      - app-network
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  cassandra:
+    image: cassandra:4.1
+    ports:
+      - "9042:9042"
+    networks:
+      - app-network
+    healthcheck:
+      test: [ "CMD", "cqlsh", "-e", "describe keyspaces" ]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+
+
+networks:
+  app-network:
