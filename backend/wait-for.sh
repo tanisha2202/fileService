@@ -1,18 +1,26 @@
 #!/bin/bash
 
-host="$1"
-port="$2"
+host="cassandra"
+port="9042"
+datacentre="datacenter1"
 
-echo "Waiting for $host:$port..."
+echo "Waiting for $host:$port to be ready..."
 
+# Wait for TCP port to open
 while ! nc -z "$host" "$port"; do
-  echo "Waiting..."
-  sleep 1
+  echo "Waiting for $host:$port..."
+  sleep 2
 done
 
-# Wait additional time for Cassandra to finish initializing
-echo "Port is open, waiting 20 more seconds for Cassandra to finish startup..."
-sleep 20
+echo "TCP port $port is open. Checking Cassandra readiness..."
 
-echo "$host:$port is available!"
-exec "${@:3}"
+# Wait for Cassandra to accept CQL commands
+until cqlsh "$host" "$port" -e "describe keyspaces"; do
+  echo "Cassandra not ready yet. Retrying..."
+  sleep 3
+done
+
+echo "Cassandra is ready. Starting Spring Boot app..."
+
+exec java -jar app.jar --spring.data.cassandra.contact-points=$host ----spring.data.cassandra.local-datacenter=$datacentre --spring.data.cassandra.schema-action=create_if_not_exists
+
